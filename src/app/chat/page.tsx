@@ -1,134 +1,33 @@
-"use client";
+// app/chat/page.tsx
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { authOptions } from "@/lib/auth";
+import { connectDB } from "@/lib/mongodb";
+import Message from "@/lib/models/Message";
 
-import ChatMessage from "@/components/ChatMessage";
-import ChatInput from "@/components/ChatInput";
-import TopBar from "@/components/Topbar";
+import ChatClient from "./ChatClient";
 
-import WeatherCard from "@/components/cards/WeatherCard";
-import StockCard from "@/components/cards/StockCard";
-import F1Card from "@/components/cards/F1Card";
+export default async function ChatPage() {
+  const session = await getServerSession(authOptions);
 
-type Message = {
-  role: "user" | "ai";
-  content?: string;
-  type?: "weather" | "stock" | "f1";
-  data?: any;
-};
-
-export default function ChatPage() {
-  const router = useRouter();
-  const { status } = useSession();
-
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-  /* ---------------------------
-     1️⃣ Protect Route
-  ---------------------------- */
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-    }
-  }, [status, router]);
-
-  /* ---------------------------
-     2️⃣ Load Messages
-  ---------------------------- */
-  useEffect(() => {
-    const saved = localStorage.getItem("chatMessages");
-    if (saved) {
-      setMessages(JSON.parse(saved));
-    }
-  }, []);
-
-  /* ---------------------------
-     3️⃣ Save Messages
-  ---------------------------- */
-  useEffect(() => {
-    localStorage.setItem("chatMessages", JSON.stringify(messages));
-  }, [messages]);
-
-  /* ---------------------------
-     4️⃣ Auto Scroll
-  ---------------------------- */
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
-
-  if (status === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        Loading...
-      </div>
-    );
+  if (!session?.user?.email) {
+    redirect("/login");
   }
 
-  /* ---------------------------
-     5️⃣ Send Message
-  ---------------------------- */
-  const handleSendMessage = async (text: string) => {
-    const updated = [...messages, { role: "user", content: text }];
-    setMessages(updated);
-    setLoading(true);
+  await connectDB();
 
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updated }),
-      });
+  const messages = await Message.find({ userId: session.user.email })
+    .sort({ createdAt: 1 })
+    .lean(); // ✅ converts to plain JS objects
 
-      const result = await res.json();
+  // Convert _id and Date to strings to avoid Server → Client errors
+  const safeMessages = messages.map((msg) => ({
+    ...msg,
+    _id: msg._id.toString(),
+    createdAt: msg.createdAt.toISOString(),
+    updatedAt: msg.updatedAt.toISOString(),
+  }));
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "ai",
-          content: result?.data?.content,
-          type: result?.type,
-          data: result?.data,
-        },
-      ]);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "ai", content: "❌ Error getting response." },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* ---------------------------
-     UI
-  ---------------------------- */
-  return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
-      <TopBar />
-
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg, index) => (
-          <ChatMessage key={index} role={msg.role} content={msg.content}>
-            {msg.type === "weather" && <WeatherCard {...msg.data} />}
-            {msg.type === "stock" && <StockCard {...msg.data} />}
-            {msg.type === "f1" && <F1Card {...msg.data} />}
-          </ChatMessage>
-        ))}
-
-        {loading && (
-          <div className="text-sm text-gray-500">AI is typing...</div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      <ChatInput onSend={handleSendMessage} />
-    </div>
-  );
+  return <ChatClient messages={safeMessages} />;
 }
