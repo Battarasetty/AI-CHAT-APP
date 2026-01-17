@@ -20,8 +20,10 @@ type Message = {
 
 export default function ChatClient({
   messages: initialMessages,
+  chatId,
 }: {
   messages: Message[];
+  chatId: string;
 }) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [loading, setLoading] = useState(false);
@@ -39,18 +41,15 @@ export default function ChatClient({
      Send message
   ---------------------------- */
   const handleSendMessage = async (text: string) => {
-    const updated = [
-      ...messages,
-      { role: "user", content: text, type: "text" },
-    ];
-    setMessages(updated);
+    const userMessage: Message = { role: "user", content: text, type: "text" };
+    setMessages((prev) => [...prev, userMessage]);
     setLoading(true);
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: updated }),
+        body: JSON.stringify({ chatId, message: text }),
       });
 
       const result = await res.json();
@@ -60,8 +59,8 @@ export default function ChatClient({
         {
           role: "ai",
           content: result?.data?.content,
-          type: result?.type,
-          data: result?.data,
+          type: result?.data?.type,
+          data: result?.data?.data,
         },
       ]);
     } catch {
@@ -83,7 +82,7 @@ export default function ChatClient({
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
-          <p className="text-center text-gray-400 mt-10">
+          <p className="mt-10 text-center text-gray-400">
             👋 Ask me about weather, stocks, or F1.
           </p>
         )}
