@@ -1,15 +1,16 @@
+import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import GithubProvider from "next-auth/providers/github";
 import { MongoDBAdapter } from "@next-auth/mongodb-adapter";
-import { clientPromise } from "./mongodb"; 
+import { clientPromise } from "./mongodb";
 
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
     providers: [
         GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID!,
             clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
             authorization: {
-                params: { prompt: "select_account" }, 
+                params: { prompt: "select_account" },
             },
         }),
         GithubProvider({
@@ -23,22 +24,28 @@ export const authOptions = {
 
     adapter: MongoDBAdapter(clientPromise),
 
-    session: { strategy: "jwt" },
+    session: {
+        strategy: "jwt", // ✅ FIXED TYPE
+    },
 
     secret: process.env.NEXTAUTH_SECRET,
 
-    pages: { signIn: "/login" },
+    pages: {
+        signIn: "/login",
+    },
 
     callbacks: {
-        async jwt({ token, user, account }) {
+        async jwt({ token, user }) {
             if (user) {
-                token.id = user.id || (user as any).sub;
+                token.id = user.id;
             }
             return token;
         },
 
         async session({ session, token }) {
-            if (session.user) session.user.id = token.id as string;
+            if (session.user) {
+                session.user.id = token.id as string;
+            }
             return session;
         },
     },
