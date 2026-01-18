@@ -1,20 +1,40 @@
+"use client";
+
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { clientPromise } from "@/lib/mongodb";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
-export default async function Sidebar() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) return null;
+type Chat = {
+  _id: string;
+  title?: string;
+};
 
-  const client = await clientPromise;
-  const db = client.db();
+export default function Sidebar() {
+  const [chats, setChats] = useState<Chat[]>([]);
+  const pathname = usePathname();
 
-  const chats = await db
-    .collection("chats")
-    .find({ userId: session.user.id })
-    .sort({ updatedAt: -1 })
-    .toArray();
+  async function loadChats() {
+    const res = await fetch("/api/chats");
+    if (res.ok) {
+      const data = await res.json();
+      setChats(data);
+    }
+  }
+
+  // Load on route change
+  useEffect(() => {
+    loadChats();
+  }, [pathname]);
+
+  // 🔥 Load when chat is updated (message sent / title updated)
+  useEffect(() => {
+    const refresh = () => loadChats();
+    window.addEventListener("chat-updated", refresh);
+
+    return () => {
+      window.removeEventListener("chat-updated", refresh);
+    };
+  }, []);
 
   return (
     <aside className="w-64 border-r bg-white p-4">
@@ -24,10 +44,10 @@ export default async function Sidebar() {
         <p className="text-sm text-gray-500">No chats yet</p>
       ) : (
         <ul className="space-y-2">
-          {chats.map(chat => (
-            <li key={chat._id.toString()}>
+          {chats.map((chat) => (
+            <li key={chat._id}>
               <Link
-                href={`/chat/${chat._id.toString()}`}
+                href={`/chat/${chat._id}`}
                 className="flex items-center gap-2 rounded px-2 py-2 text-sm hover:bg-gray-100"
               >
                 <span>🗨️</span>
@@ -37,10 +57,6 @@ export default async function Sidebar() {
           ))}
         </ul>
       )}
-
-      <Link href="/chat" className="mt-4 inline-block text-sm text-blue-600">
-        + New Chat
-      </Link>
     </aside>
   );
 }

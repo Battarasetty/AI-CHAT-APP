@@ -10,40 +10,95 @@ import { getF1LastRaceWinner } from "@/lib/tools/f1";
 
 export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const { chatId, message } = await req.json();
-    if (!chatId || !message) return NextResponse.json({ error: "Bad Request" }, { status: 400 });
+    if (!chatId || !message) {
+        return NextResponse.json({ error: "Bad Request" }, { status: 400 });
+    }
 
     const client = await clientPromise;
     const db = client.db();
 
-    const chat = await db.collection("chats").findOne({ _id: new ObjectId(chatId), userId: session.user.id });
-    if (!chat) return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+    const chat = await db.collection("chats").findOne({
+        _id: new ObjectId(chatId),
+        userId: session.user.id,
+    });
 
-    const userMsg = { role: "user", content: message, type: "text", createdAt: new Date() };
+    if (!chat) {
+        return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+    }
+
+    // Save user message + auto title
+    const userMsg = {
+        role: "user",
+        content: message,
+        type: "text",
+        createdAt: new Date(),
+    };
+
+    const updates: any = {
+        $push: { messages: userMsg },
+        $set: { updatedAt: new Date() },
+    };
+
+    if (!chat.title) {
+        updates.$set.title = message.slice(0, 50);
+    }
+
     await db.collection("chats").updateOne(
         { _id: new ObjectId(chatId) },
-        { $push: { messages: userMsg }, $set: { updatedAt: new Date() } }
+        updates
     );
 
-    // AI response
-    let aiMsg: any = { role: "ai", type: "text", content: "" };
+    // AI response (ALWAYS include content)
+    let aiMsg: any = {
+        role: "ai",
+        type: "text",
+        content: "",
+        createdAt: new Date(),
+    };
+
     const lower = message.toLowerCase();
+
     if (lower.includes("weather")) {
-        aiMsg = { role: "ai", type: "weather", data: await getWeather("Bangalore") };
+        aiMsg = {
+            role: "ai",
+            type: "weather",
+            content: "Here is the weather information:",
+            data: await getWeather("Bangalore"),
+            createdAt: new Date(),
+        };
     } else if (lower.includes("stock")) {
-        aiMsg = { role: "ai", type: "stock", data: await getStockPrice("AAPL") };
+        aiMsg = {
+            role: "ai",
+            type: "stock",
+            content: "Here is the stock price:",
+            data: await getStockPrice("AAPL"),
+            createdAt: new Date(),
+        };
     } else if (lower.includes("f1")) {
-        aiMsg = { role: "ai", type: "f1", data: await getF1LastRaceWinner() };
+        aiMsg = {
+            role: "ai",
+            type: "f1",
+            content: "Here is the latest F1 result:",
+            data: await getF1LastRaceWinner(),
+            createdAt: new Date(),
+        };
     } else {
         aiMsg.content = "I can help with weather, stocks, or F1 data.";
     }
 
     await db.collection("chats").updateOne(
         { _id: new ObjectId(chatId) },
-        { $push: { messages: aiMsg }, $set: { updatedAt: new Date() } }
+        {
+            $push: { messages: aiMsg },
+            $set: { updatedAt: new Date() },
+        }
     );
 
-    return NextResponse.json({ data: aiMsg });
+    // ⬅️ IMPORTANT: return aiMsg directly
+    return NextResponse.json(aiMsg);
 }

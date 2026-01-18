@@ -30,19 +30,15 @@ export default function ChatClient({
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  /* ---------------------------
-     Auto scroll
-  ---------------------------- */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  /* ---------------------------
-     Send message
-  ---------------------------- */
   const handleSendMessage = async (text: string) => {
-    const userMessage: Message = { role: "user", content: text, type: "text" };
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: text, type: "text" },
+    ]);
     setLoading(true);
 
     try {
@@ -52,17 +48,19 @@ export default function ChatClient({
         body: JSON.stringify({ chatId, message: text }),
       });
 
-      const result = await res.json();
+      const ai = await res.json(); // ✅ FIX HERE
 
       setMessages((prev) => [
         ...prev,
         {
           role: "ai",
-          content: result?.data?.content,
-          type: result?.data?.type,
-          data: result?.data?.data,
+          content: ai.content,
+          type: ai.type,
+          data: ai.data,
         },
       ]);
+
+      window.dispatchEvent(new Event("chat-updated"));
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -73,9 +71,6 @@ export default function ChatClient({
     }
   };
 
-  /* ---------------------------
-     UI
-  ---------------------------- */
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <TopBar />
@@ -102,7 +97,6 @@ export default function ChatClient({
         {loading && (
           <div className="text-sm text-gray-500">AI is typing...</div>
         )}
-
         <div ref={messagesEndRef} />
       </div>
 
