@@ -6,13 +6,14 @@ import { Textarea } from "./ui/textarea";
 
 type ChatInputProps = {
   onSend: (message: string) => void;
+  disabled?: boolean; 
 };
 
-export default function ChatInput({ onSend }: ChatInputProps) {
+export default function ChatInput({ onSend, disabled = false }: ChatInputProps) {
   const [message, setMessage] = useState("");
 
   const handleSend = () => {
-    if (!message.trim()) return;
+    if (!message.trim() || disabled) return; 
     onSend(message);
     setMessage("");
   };
@@ -25,8 +26,15 @@ export default function ChatInput({ onSend }: ChatInputProps) {
         onChange={(e) => setMessage(e.target.value)}
         rows={1}
         className="resize-none"
+        disabled={disabled} 
       />
-      <Button onClick={handleSend}>Send</Button>
+      <Button 
+        onClick={handleSend} 
+        disabled={disabled} 
+        className={disabled ? "opacity-50 cursor-not-allowed" : ""}
+      >
+        Send
+      </Button>
     </div>
   );
 }

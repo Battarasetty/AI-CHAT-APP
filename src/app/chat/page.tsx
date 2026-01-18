@@ -1,4 +1,3 @@
-// src/app/chat/page.tsx
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 
@@ -14,7 +13,6 @@ export default async function ChatPage() {
   const client = await clientPromise;
   const db = client.db();
 
-  // Get the latest chat for this user (or create a new one if none exists)
   let chat = await db
     .collection("chats")
     .findOne({ userId: session.user.id }, { sort: { updatedAt: -1 } });

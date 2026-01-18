@@ -26,20 +26,31 @@ export default function ChatClient({
   chatId: string;
 }) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [loading, setLoading] = useState(false);
+
+  const [isLoading, setIsLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, isLoading]);
+
 
   const handleSendMessage = async (text: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: text, type: "text" },
-    ]);
-    setLoading(true);
+    if (!text.trim()) return;
+
+    if (isLoading) return;
+
+    const userMessage: Message = {
+      role: "user",
+      content: text,
+      type: "text",
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+
+    setIsLoading(true);
 
     try {
       const res = await fetch("/api/messages", {
@@ -48,26 +59,32 @@ export default function ChatClient({
         body: JSON.stringify({ chatId, message: text }),
       });
 
-      const ai = await res.json(); // ✅ FIX HERE
+      if (!res.ok) {
+        throw new Error("Failed to fetch AI response");
+      }
+
+      const aiMessage = await res.json();
 
       setMessages((prev) => [
         ...prev,
         {
           role: "ai",
-          content: ai.content,
-          type: ai.type,
-          data: ai.data,
+          content: aiMessage.content ?? "",
+          type: aiMessage.type ?? "text",
+          data: aiMessage.data,
         },
       ]);
-
-      window.dispatchEvent(new Event("chat-updated"));
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "ai", content: "❌ Error getting response." },
+        {
+          role: "ai",
+          content: "Something went wrong. Please try again.",
+          type: "text",
+        },
       ]);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -76,7 +93,7 @@ export default function ChatClient({
       <TopBar />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
+        {messages.length === 0 && !isLoading && (
           <p className="mt-10 text-center text-gray-400">
             👋 Ask me about weather, stocks, or F1.
           </p>
@@ -94,13 +111,17 @@ export default function ChatClient({
           </ChatMessage>
         ))}
 
-        {loading && (
-          <div className="text-sm text-gray-500">AI is typing...</div>
+        {isLoading && (
+          <div className="flex items-center gap-2 px-4 py-2 text-sm text-gray-500">
+            <span className="animate-pulse">AI is typing</span>
+            <span className="animate-bounce">…</span>
+          </div>
         )}
+
         <div ref={messagesEndRef} />
       </div>
 
-      <ChatInput onSend={handleSendMessage} />
+      <ChatInput onSend={handleSendMessage} disabled={isLoading} />
     </div>
   );
 }

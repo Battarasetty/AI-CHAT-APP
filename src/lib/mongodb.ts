@@ -7,9 +7,7 @@ if (!MONGODB_URI) {
     throw new Error("Please define the MONGODB_URI in .env.local");
 }
 
-/* ---------------------------
-   1️⃣ For Mongoose (App DB)
----------------------------- */
+
 let cached = global.mongoose;
 
 if (!cached) {
@@ -27,9 +25,7 @@ export async function connectDB() {
     return cached.conn;
 }
 
-/* ---------------------------
-   2️⃣ For MongoClient (NextAuth / API)
----------------------------- */
+
 let client: MongoClient;
 let clientPromise: Promise<MongoClient>;
 
@@ -44,5 +40,4 @@ if (process.env.NODE_ENV === "development") {
     clientPromise = client.connect();
 }
 
-// ✅ Export clientPromise for API routes
 export { clientPromise };

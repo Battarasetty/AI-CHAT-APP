@@ -19,7 +19,6 @@ export default function TopBar() {
 
       const { chatId } = await res.json();
 
-      // ✅ IMPORTANT: navigate to the new chat
       router.push(`/chat/${chatId}`);
     } catch (error) {
       console.error(error);

@@ -1,4 +1,3 @@
-// src/lib/tools/f1.ts
 export async function getF1LastRaceWinner() {
     try {
         const res = await fetch("https://ergast.com/api/f1/current/last/results.json")

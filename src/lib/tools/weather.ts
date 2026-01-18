@@ -1,6 +1,5 @@
 export async function getWeather(city: string) {
     try {
-        // Get coordinates
         const geoRes = await fetch(
             `https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1`
         );
@@ -12,7 +11,6 @@ export async function getWeather(city: string) {
 
         const { latitude, longitude } = geoData.results[0];
 
-        // Get current weather
         const weatherRes = await fetch(
             `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
         );

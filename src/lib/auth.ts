@@ -1,8 +1,7 @@
-// src/lib/auth.ts
 import GoogleProvider from "next-auth/providers/google";
 import GithubProvider from "next-auth/providers/github";
 import { MongoDBAdapter } from "@next-auth/mongodb-adapter";
-import { clientPromise } from "./mongodb"; // MongoDB client
+import { clientPromise } from "./mongodb"; 
 
 export const authOptions = {
     providers: [
@@ -33,7 +32,6 @@ export const authOptions = {
     callbacks: {
         async jwt({ token, user, account }) {
             if (user) {
-                // Google returns `sub` instead of `id`
                 token.id = user.id || (user as any).sub;
             }
             return token;

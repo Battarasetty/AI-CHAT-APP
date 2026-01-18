@@ -31,7 +31,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Chat not found" }, { status: 404 });
     }
 
-    // Save user message + auto title
     const userMsg = {
         role: "user",
         content: message,
@@ -53,7 +52,6 @@ export async function POST(req: Request) {
         updates
     );
 
-    // AI response (ALWAYS include content)
     let aiMsg: any = {
         role: "ai",
         type: "text",
@@ -99,6 +97,5 @@ export async function POST(req: Request) {
         }
     );
 
-    // ⬅️ IMPORTANT: return aiMsg directly
     return NextResponse.json(aiMsg);
 }

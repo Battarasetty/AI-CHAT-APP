@@ -21,12 +21,10 @@ export default function Sidebar() {
     }
   }
 
-  // Load on route change
   useEffect(() => {
     loadChats();
   }, [pathname]);
 
-  // 🔥 Load when chat is updated (message sent / title updated)
   useEffect(() => {
     const refresh = () => loadChats();
     window.addEventListener("chat-updated", refresh);
